@@ -12,18 +12,18 @@
 
 后端待实现的内容
 --
-// 实现接收解析单个main.c文件  X
+- [ ] 实现接收解析单个main.c文件
 
-// 实现交叉编译c文件  X
+- [ ] 实现交叉编译c文件
 
-// 实现转录ihx文件到hex文件 X 
+- [ ] 实现转录ihx文件到hex文件
 
-// 实现回传hex文件  X
+- [ ] 实现回传hex文件
 
 参考项目以及教程
 --
-https://www.cnblogs.com/milton/p/14994533.html  
+- https://www.cnblogs.com/milton/p/14994533.html  
 
-http://www.51hei.com/bbs/forum.php?mod=viewthread&tid=190291&extra=page%3D1&page=1&  
+- http://www.51hei.com/bbs/forum.php?mod=viewthread&tid=190291&extra=page%3D1&page=1&  
 
-https://github.com/WallBreakerX/MCUFirmwareWriter
+- https://github.com/WallBreakerX/MCUFirmwareWriter

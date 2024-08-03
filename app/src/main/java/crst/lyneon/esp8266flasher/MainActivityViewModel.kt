@@ -1,12 +1,11 @@
 package crst.lyneon.esp8266flasher // 定义包结构
 import androidx.lifecycle.ViewModel
-import com.jsdroid.editor.CodePane
-import com.jsdroid.editor.CodeText
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -20,12 +19,8 @@ object MainActivityViewModel : ViewModel() {
         _uiState.value = _uiState.value.update()
     }
 
-    fun setCodePane(codePane: CodePane) {
-        updateUIState { copy(codePane = codePane) }
-    }
-
-    fun setCodeText(codeText: CodeText) {
-        updateUIState { copy(codeText = codeText) }
+    fun setCode(code: String) {
+        updateUIState { copy(code = code) }
     }
 
     fun selectDevice(device: String) {
@@ -36,26 +31,19 @@ object MainActivityViewModel : ViewModel() {
         updateUIState { copy(expandPortSelectDropdownMenu = expand) }
     }
 
-    fun loadProgram() {
-        // 实现文件选择器功能
-    }
-
-    suspend fun uploadSourceCode() {
-        withContext(Dispatchers.IO) {
+    fun uploadSourceCode() {
+        viewModelScope.launch(Dispatchers.IO) {
             OkHttpClient().newCall(
                 Request.Builder()
                     .url("") // TODO: 补全url
-                    .post(
-                        uiState.value.codeText?.text.toString()
-                            .toRequestBody("application/octet-stream".toMediaType())
-                    )
+                    .post(uiState.value.code.toRequestBody("application/octet-stream".toMediaType()))
                     .build()
             ).execute()
         }
     }
 
-    suspend fun downloadSourceCode() {
-        withContext(Dispatchers.IO) {
+    fun downloadSourceCode() {
+        viewModelScope.launch(Dispatchers.IO) {
             val response = OkHttpClient().newCall(
                 Request.Builder()
                     .url("") // TODO: 补全url
@@ -63,14 +51,10 @@ object MainActivityViewModel : ViewModel() {
                     .build()
             ).execute()
             if (response.isSuccessful) {
-                _uiState.value.codeText?.setText(response.body?.string())
+                setCode(response.body?.string().toString())
             }
         }
     }
-
-
-
-
 
     fun flash() {
         // TODO
@@ -80,6 +64,5 @@ object MainActivityViewModel : ViewModel() {
 data class MainActivityUIState(
     val selectedDevice: String = "未选中端口",
     val expandPortSelectDropdownMenu: Boolean = false,
-    val codePane: CodePane? = null,
-    val codeText: CodeText? = null,
+    val code: String = "// Source code here"
 )

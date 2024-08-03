@@ -1,5 +1,4 @@
-package crst.lyneon.esp8266flasher
-
+package crst.lyneon.esp8266flasher // 定义包结构
 import androidx.lifecycle.ViewModel
 import com.jsdroid.editor.CodePane
 import com.jsdroid.editor.CodeText
@@ -69,13 +68,9 @@ object MainActivityViewModel : ViewModel() {
         }
     }
 
-    fun compileRemote() {
-        // TODO
-    }
 
-    fun compileLocal() {
-        // TODO
-    }
+
+
 
     fun flash() {
         // TODO

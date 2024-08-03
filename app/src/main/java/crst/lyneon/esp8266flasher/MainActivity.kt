@@ -123,22 +123,16 @@ class MainActivity : ComponentActivity() {
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Button(onClick = { viewModel.modifyProgram() }) {
-                                    Text(text = "修改程序")
+                                    Text(text = "加载程序")
                                 }
                                 Button(onClick = { scope.launch { viewModel.uploadSourceCode() } }) {
-                                    Text(text = "上传源码")
+                                    Text(text = "上传编译")
                                 }
                                 Button(onClick = { scope.launch { viewModel.downloadSourceCode() } }) {
-                                    Text(text = "下载源码")
-                                }
-                                Button(onClick = { viewModel.compileRemote() }) {
-                                    Text(text = "云端编译")
-                                }
-                                Button(onClick = { viewModel.compileLocal() }) {
-                                    Text(text = "本地编译")
+                                    Text(text = "编译下载")
                                 }
                                 Button(onClick = { viewModel.flash() }) {
-                                    Text(text = "烧录")
+                                    Text(text = "串口烧录")
                                 }
                             }
                         }

@@ -122,7 +122,7 @@ class MainActivity : ComponentActivity() {
                             FlowRow(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Button(onClick = { viewModel.modifyProgram() }) {
+                                Button(onClick = { viewModel.loadProgram() }) {
                                     Text(text = "加载程序")
                                 }
                                 Button(onClick = { scope.launch { viewModel.uploadSourceCode() } }) {

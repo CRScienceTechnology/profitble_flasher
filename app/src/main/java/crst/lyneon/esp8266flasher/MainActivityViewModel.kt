@@ -36,8 +36,8 @@ object MainActivityViewModel : ViewModel() {
         updateUIState { copy(expandPortSelectDropdownMenu = expand) }
     }
 
-    fun modifyProgram() {
-        // TODO
+    fun loadProgram() {
+        // 实现文件选择器功能
     }
 
     suspend fun uploadSourceCode() {

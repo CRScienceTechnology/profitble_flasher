@@ -156,31 +156,28 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun PortSelectRow(uiState: MainActivityUIState, viewModel: MainActivityViewModel) {
+private fun PortSelectRow(uiState: MainActivityUIState, viewModel: MainActivityViewModel)
+{
     val usbManager =
         BaseApplication.context.getSystemService(USB_SERVICE) as UsbManager
-
+                                                           // 定义了一行布局，包含两个子元素
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        modifier = Modifier.fillMaxWidth(),                // 表示这个 Row 的宽度将填充其父容器的整个宽度
+        horizontalArrangement = Arrangement.SpaceBetween,  // 设置了子元素在水平方向上的分布方式为两端对齐
+        verticalAlignment = Alignment.CenterVertically     //确保子元素垂直居中。
     ) {
-        Text(text = uiState.selectedDevice)
-        IconButton(onClick = {
-            viewModel.setExpandPortSelectDropdownMenu(
-                true
-            )
-        }) {
+        Text(text = uiState.selectedDevice)                                       // text组件
+        IconButton(onClick = { viewModel.setExpandPortSelectDropdownMenu(true) }) // IconButton组件，点击触发事件
+        {
             Icon(
-                imageVector = Icons.Default.KeyboardArrowDown,
-                contentDescription = null
+                imageVector = Icons.Default.KeyboardArrowDown,                    // ICON图标设置
+                contentDescription = null                                         // 无障碍描述
             )
             DropdownMenu(
-                expanded = uiState.expandPortSelectDropdownMenu,
-                onDismissRequest = {
-                    viewModel.setExpandPortSelectDropdownMenu(false)
-                }) {
-                val availableDrivers = UsbSerialProber.getDefaultProber()
+                expanded = uiState.expandPortSelectDropdownMenu,                       // 是否展开下拉菜单，取决于uiState
+                onDismissRequest = { viewModel.setExpandPortSelectDropdownMenu(false)} // 点击下拉菜单意外的地方触发回调
+            ) {                                                                        // 组件子内容
+                val availableDrivers = UsbSerialProber.getDefaultProber()              // 获取所有可用USB驱动器
                     .findAllDrivers(usbManager)
 
                 Text(

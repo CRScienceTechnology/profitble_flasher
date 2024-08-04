@@ -6,10 +6,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
 
 object MainActivityViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(MainActivityUIState())
@@ -41,10 +39,9 @@ object MainActivityViewModel : ViewModel() {
 
     fun uploadSourceCode() {
         viewModelScope.launch(Dispatchers.IO) {
-            OkHttpClient().newCall(
+            OkHttpClient().newBuilder().hostnameVerifier { _, _ -> true }.build().newCall(
                 Request.Builder()
-                    .url("") // TODO: 补全url
-                    .post(uiState.value.code.toRequestBody("application/octet-stream".toMediaType()))
+                    .url(Secret.COMPILE_SERVER)
                     .build()
             ).execute()
         }

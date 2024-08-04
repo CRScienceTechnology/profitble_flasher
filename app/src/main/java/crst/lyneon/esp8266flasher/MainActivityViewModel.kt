@@ -8,7 +8,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
-
+object Secret {
+    const val COMPILE_SERVER_KEY = ""
+    const val COMPILE_SERVER = ""
+}
 object MainActivityViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(MainActivityUIState())
     val uiState: StateFlow<MainActivityUIState> get() = _uiState.asStateFlow()

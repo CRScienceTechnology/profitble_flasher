@@ -43,7 +43,7 @@ object MainActivityViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             OkHttpClient().newCall(
                 Request.Builder()
-                    .url("https://182.92.143.75/COMPILE_SERVER:11451")
+                    .url("") // TODO: 补全url
                     .post(uiState.value.code.toRequestBody("application/octet-stream".toMediaType()))
                     .build()
             ).execute()

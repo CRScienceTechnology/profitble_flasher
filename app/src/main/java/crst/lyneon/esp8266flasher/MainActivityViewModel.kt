@@ -31,6 +31,14 @@ object MainActivityViewModel : ViewModel() {
         updateUIState { copy(expandPortSelectDropdownMenu = expand) }
     }
 
+    fun setBaudRate(baudRate: String) {
+        updateUIState { copy(baudRate = baudRate) }
+    }
+
+    fun setExpandOptionMenu(expand: Boolean) {
+        updateUIState { copy(expandOptionMenu = expand) }
+    }
+
     fun uploadSourceCode() {
         viewModelScope.launch(Dispatchers.IO) {
             OkHttpClient().newCall(
@@ -64,5 +72,7 @@ object MainActivityViewModel : ViewModel() {
 data class MainActivityUIState(
     val selectedDevice: String = "未选中端口",
     val expandPortSelectDropdownMenu: Boolean = false,
-    val code: String = "// Source code here"
+    val code: String = "// Source code here",
+    val baudRate: String = "",
+    val expandOptionMenu: Boolean = false
 )

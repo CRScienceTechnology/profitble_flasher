@@ -1,5 +1,6 @@
 package crst.lyneon.esp8266flasher
 
+import android.content.Context.USB_SERVICE
 import android.content.Intent
 import android.hardware.usb.UsbManager
 import android.os.Bundle
@@ -19,16 +20,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -38,6 +42,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.hoho.android.usbserial.driver.UsbSerialProber
 import crst.lyneon.esp8266flasher.ui.theme.ESP8266FlasherTheme
 import kotlinx.coroutines.launch
 
@@ -48,18 +53,45 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
+            val viewModel = viewModel<MainActivityViewModel>()
+            val uiState by viewModel.uiState.collectAsState()
+
             ESP8266FlasherTheme {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     topBar = {
-                        CenterAlignedTopAppBar(title = { Text(text = stringResource(R.string.app_name)) })
+                        CenterAlignedTopAppBar(
+                            title = { Text(text = stringResource(R.string.app_name)) },
+                            actions = {
+                                IconButton(onClick = { viewModel.setExpandOptionMenu(true) }) {
+                                    Icon(
+                                        imageVector = Icons.Default.MoreVert,
+                                        contentDescription = null
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = uiState.expandOptionMenu,
+                                    onDismissRequest = { viewModel.setExpandOptionMenu(false) }
+                                ) {
+                                    Text(text = "配置", modifier = Modifier.padding(8.dp))
+                                    TextField(
+                                        value = uiState.baudRate,
+                                        onValueChange = { viewModel.setBaudRate(it) },
+                                        label = {
+                                            Text(text = "波特率")
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = {
+                                            PortSelectRow(uiState = uiState, viewModel = viewModel)
+                                        },
+                                        onClick = { }
+                                    )
+                                }
+                            }
+                        )
                     },
                 ) { innerPadding ->
-                    val viewModel = viewModel<MainActivityViewModel>()
-                    val uiState by viewModel.uiState.collectAsState()
-
-                    val usbManager =
-                        BaseApplication.context.getSystemService(USB_SERVICE) as UsbManager
                     val mainActivity = LocalContext.current as MainActivity
                     val scope = rememberCoroutineScope()
                     val launcher = rememberLauncherForActivityResult(
@@ -92,46 +124,6 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.padding(16.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(text = uiState.selectedDevice)
-                                IconButton(onClick = {
-                                    viewModel.setExpandPortSelectDropdownMenu(
-                                        true
-                                    )
-                                }) {
-                                    Icon(
-                                        imageVector = Icons.Default.KeyboardArrowDown,
-                                        contentDescription = null
-                                    )
-                                    DropdownMenu(
-                                        expanded = uiState.expandPortSelectDropdownMenu,
-                                        onDismissRequest = {
-                                            viewModel.setExpandPortSelectDropdownMenu(false)
-                                        }) {
-                                        Text(
-                                            modifier = Modifier.padding(horizontal = 16.dp),
-                                            text = "选择端口"
-                                        )
-                                        usbManager.deviceList.forEach {
-                                            DropdownMenuItem(
-                                                text = { Text(text = it.value.deviceName) },
-                                                onClick = {
-                                                    // 请求选中的usb设备的权限
-                                                    /*usbManager.requestPermission(
-                                                        it.value,
-                                                        PendingIntent.getBroadcast( mainActivity, 0,  Intent(), PendingIntent.FLAG_IMMUTABLE  )
-                                                    )*/
-                                                    viewModel.selectDevice(it.value.deviceName)
-                                                }
-                                            )
-                                        }
-                                    }
-                                }
-                            }
                             FlowRow(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
@@ -157,6 +149,57 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PortSelectRow(uiState: MainActivityUIState, viewModel: MainActivityViewModel) {
+    val usbManager =
+        BaseApplication.context.getSystemService(USB_SERVICE) as UsbManager
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text = uiState.selectedDevice)
+        IconButton(onClick = {
+            viewModel.setExpandPortSelectDropdownMenu(
+                true
+            )
+        }) {
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowDown,
+                contentDescription = null
+            )
+            DropdownMenu(
+                expanded = uiState.expandPortSelectDropdownMenu,
+                onDismissRequest = {
+                    viewModel.setExpandPortSelectDropdownMenu(false)
+                }) {
+                val availableDrivers = UsbSerialProber.getDefaultProber()
+                    .findAllDrivers(usbManager)
+
+                Text(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    text = "选择端口"
+                )
+                availableDrivers.forEach { driver ->
+                    HorizontalDivider()
+                    DropdownMenuItem(
+                        text = { Text(text = driver.ports.toString()) },
+                        onClick = {
+                            // 请求选中的usb设备的权限
+                            /*usbManager.requestPermission(
+                                it.value,
+                                PendingIntent.getBroadcast( mainActivity, 0,  Intent(), PendingIntent.FLAG_IMMUTABLE  )
+                            )*/
+                            viewModel.selectDevice(driver.ports.toString())
+                        }
+                    )
                 }
             }
         }

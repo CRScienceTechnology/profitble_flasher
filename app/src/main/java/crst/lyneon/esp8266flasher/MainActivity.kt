@@ -1,9 +1,13 @@
 package crst.lyneon.esp8266flasher
 
+import android.content.Context
 import android.content.Context.USB_SERVICE
 import android.content.Intent
 import android.hardware.usb.UsbManager
+import android.net.Uri
 import android.os.Bundle
+import android.provider.MediaStore
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -45,6 +49,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.hoho.android.usbserial.driver.UsbSerialProber
 import crst.lyneon.esp8266flasher.ui.theme.ESP8266FlasherTheme
 import kotlinx.coroutines.launch
+import java.io.BufferedReader
+import java.io.IOException
+import java.io.InputStreamReader
+import kotlin.math.log
 
 
 class MainActivity : ComponentActivity() {
@@ -98,10 +106,34 @@ class MainActivity : ComponentActivity() {
                         contract = ActivityResultContracts.StartActivityForResult()
                     ) { result ->
                         if (result.resultCode == RESULT_OK) {
-                            result.data?.data?.let { uri ->
-                                val contentResolver = mainActivity.contentResolver
-                                contentResolver.openInputStream(uri)?.bufferedReader()?.use {
-                                    viewModel.setCode(it.readText())
+                            if (result.data?.data == null) {
+                                Toast.makeText(mainActivity, "未选择文件", Toast.LENGTH_SHORT).show()
+                                return@rememberLauncherForActivityResult
+                            }
+                            else{                                     // 类似于网页开发一样，UI组件会具有一些属性.data就是访问result的uri
+                                    result.data?.data?.let { uri ->   // 代码作用 https://kimi.moonshot.cn/share/cqnpnucubms1eeb0k8h0
+                                    val contentResolver = mainActivity.contentResolver  // 获取内容解析器, 用于读取文件 原因 https://kimi.moonshot.cn/share/cqnq2g69e5jhdcr4hui0
+                                    contentResolver.openInputStream(uri)?.bufferedReader()?.use { viewModel.setCode(it.readText())}
+                                        try {
+                                            // 打开输入流
+                                            val inputStream = contentResolver.openInputStream(uri)
+                                            // 创建对象暂存读取的文本
+                                            val reader = inputStream?.let { stream ->
+                                                BufferedReader(InputStreamReader(stream))
+                                            }
+                                            reader?.use { it ->
+                                                // 读取所有内容并转换为字符串
+                                                val content = it.readText()
+                                                // 打印内容到日志
+                                                Log.d("这是读取到的文本", content)
+                                                // 传出字符串变量给MainActivityViewModel的uploadSourceCode()函数作用域内
+                                                content.let { viewModel.uploadSourceCode(content) } // 这属于调用viewModel的uploadSourceCode()函数并且传参了
+                                            }
+                                        } catch (e: IOException) {
+                                            // 处理可能发生的 IOException
+                                            e.printStackTrace()
+                                        }
+
                                 }
                             }
                         }
@@ -130,10 +162,11 @@ class MainActivity : ComponentActivity() {
                                 Button(onClick = {
                                     Toast.makeText(mainActivity, "选择一个文件", Toast.LENGTH_SHORT) // 弹出Toast提示
                                         .show()
-                                    val intent = Intent(Intent.ACTION_GET_CONTENT).apply {   // 创建INTENT对象并设置action类型
-                                        type = "*/*"                                         // 设置MIME类型，这里是任意类型
+                                    val intent = Intent(Intent.ACTION_GET_CONTENT).apply {             // 创建INTENT对象并设置action类型
+                                        type = "*/*"                                                   // 设置MIME类型，这里是任意类型
                                     }
-                                    launcher.launch(intent)
+
+                                    launcher.launch(intent)                                            // 加载inten对象到launcher对象中
                                 }) {
                                     Text(text = "加载程序")
                                 }

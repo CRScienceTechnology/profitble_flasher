@@ -136,10 +136,10 @@ class MainActivity : ComponentActivity() {
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Button(onClick = {
-                                    Toast.makeText(mainActivity, "选择一个文件", Toast.LENGTH_SHORT)
+                                    Toast.makeText(mainActivity, "选择一个文件", Toast.LENGTH_SHORT) // 弹出Toast提示
                                         .show()
-                                    val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
-                                        type = "*/*"
+                                    val intent = Intent(Intent.ACTION_GET_CONTENT).apply {   // 创建INTENT对象并设置action类型
+                                        type = "*/*"                                         // 设置MIME类型，这里是任意类型
                                     }
                                     launcher.launch(intent)
                                 }) {

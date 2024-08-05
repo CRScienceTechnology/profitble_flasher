@@ -1,17 +1,21 @@
-package crst.lyneon.esp8266flasher // 定义包结构
+package crst.flasher.android // 定义包结构
+
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import crst.flasher.android.data.model.SourceCodeRequestJSON
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
-object Secret {
-    const val COMPILE_SERVER_KEY = ""
-    const val COMPILE_SERVER = ""
-}
+import okhttp3.RequestBody.Companion.toRequestBody
+
 object MainActivityViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(MainActivityUIState())
     val uiState: StateFlow<MainActivityUIState> get() = _uiState.asStateFlow()
@@ -40,11 +44,34 @@ object MainActivityViewModel : ViewModel() {
         updateUIState { copy(expandOptionMenu = expand) }
     }
 
-    fun uploadSourceCode() {
-        viewModelScope.launch(Dispatchers.IO) {
+    fun uploadSourceCode(sourceCode: String) {
+        viewModelScope.launch(Dispatchers.IO)
+        {
+            // 将该字符变量转化成请求体对象
+            Log.d("View接收到的数据", sourceCode)
+            // 定义一个json数据类
+
+            // 完成字符串到json的转换，json结构如下
+            //{
+            //    "name":文件名
+            //    "code":代码主体
+            //    "filetype":.c文件还是.h文件说明
+            //}
+
+            val sourceCodeRequest = Json.encodeToString(
+                SourceCodeRequestJSON(
+                    name = "test.c",
+                    code = sourceCode,
+                    filetype = ".c"
+                )
+            )
+            val requestBody = sourceCodeRequest
+                .toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
+            // 发送JSON字符串
             OkHttpClient().newBuilder().hostnameVerifier { _, _ -> true }.build().newCall(
                 Request.Builder()
                     .url(Secret.COMPILE_SERVER)
+                    .post(requestBody)
                     .build()
             ).execute()
         }
@@ -76,3 +103,7 @@ data class MainActivityUIState(
     val baudRate: String = "",
     val expandOptionMenu: Boolean = false
 )
+
+// 打开c文件并且保存至变量
+// 从mainActivityViewModel中获取变量
+// 将字符串变量以json文件的方式发送给服务器

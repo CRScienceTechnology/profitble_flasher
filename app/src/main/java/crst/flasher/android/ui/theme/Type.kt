@@ -1,4 +1,4 @@
-package crst.lyneon.esp8266flasher.ui.theme
+package crst.flasher.android.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

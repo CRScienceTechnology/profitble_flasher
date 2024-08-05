@@ -2,14 +2,15 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
     alias(libs.plugins.compose.compiler)
+    kotlin("plugin.serialization")
 }
 
 android {
-    namespace = "crst.lyneon.esp8266flasher"
+    namespace = "crst.flasher.android"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "crst.lyneon.esp8266flasher"
+        applicationId = "crst.flasher.android"
         minSdk = 23
         targetSdk = 34
         versionCode = 1
@@ -53,6 +54,7 @@ android {
 dependencies {
     implementation(libs.usb.serial.android)
     implementation(libs.okhttp)
+    implementation(libs.jetbrains.kotlinx.serialization.json)
 
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.core.ktx)

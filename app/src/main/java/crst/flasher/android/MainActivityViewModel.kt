@@ -1,9 +1,11 @@
 package crst.flasher.android // 定义包结构
 
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import crst.flasher.android.data.model.SourceCodeRequestJSON
+import crst.flasher.android.util.readText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -42,6 +44,29 @@ object MainActivityViewModel : ViewModel() {
 
     fun setExpandOptionMenu(expand: Boolean) {
         updateUIState { copy(expandOptionMenu = expand) }
+    }
+
+    fun setCurrentScreen(screen: MainActivity.Screen) {
+        updateUIState { copy(currentScreen = screen) }
+    }
+
+    fun addFile(fileUri: Uri) {
+        updateUIState { copy(files = files.apply { add(fileUri) }) }
+        updateUIState { copy(selectedFileIndex = files.indexOf(fileUri)) }
+        updateUIState { copy(code = fileUri.readText().toString()) }
+    }
+
+    fun removeFile(fileUri: Uri) {
+        updateUIState { copy(files = files.apply { remove(fileUri) }) }
+        updateUIState { copy(selectedFileIndex = files.lastIndex) }
+    }
+
+    fun removeAllFiles() {
+        updateUIState { copy(files = files.apply { clear() }) }
+    }
+
+    fun setSelectedFileIndex(index: Int) {
+        updateUIState { copy(selectedFileIndex = index) }
     }
 
     fun uploadSourceCode(sourceCode: String) {
@@ -101,7 +126,10 @@ data class MainActivityUIState(
     val expandPortSelectDropdownMenu: Boolean = false,
     val code: String = "// Source code here",
     val baudRate: String = "",
-    val expandOptionMenu: Boolean = false
+    val expandOptionMenu: Boolean = false,
+    val currentScreen: MainActivity.Screen = MainActivity.Screen.Flash,
+    val files: MutableList<Uri> = mutableListOf(),
+    val selectedFileIndex: Int = -1
 )
 
 // 打开c文件并且保存至变量

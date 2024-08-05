@@ -1,4 +1,4 @@
-package crst.lyneon.esp8266flasher
+package crst.flasher.android
 
 import android.app.Application
 

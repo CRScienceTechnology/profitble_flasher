@@ -10,6 +10,7 @@ fun Uri.readText() =
         .use { it?.readText() }            // .bufferedReader()基于输入流创建缓冲区
                                            // .use() 自动关闭资源方法，it指代bufferedReader的返回对象
                                            //  若it?.readText()为空，则返回null，则不执行关闭流动作
+//                                              并不是这样。无论lambda中是否发生异常，use函数都会在最后关闭资源
 
                                            // val uri: Uri =  获取一个 Uri 对象，例如从 ContentProvider 或文件系统
                                            // val text: String? = uri.readText()  调用 readText() 方法

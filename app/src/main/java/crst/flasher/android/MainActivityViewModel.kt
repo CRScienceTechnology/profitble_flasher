@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit
 
 
 object MainActivityViewModel : ViewModel() {
+//    ViewModel是mvvm架构中重要的一层，用于存储和修改ui相关的状态，有助于ui与逻辑分离
     private val _uiState = MutableStateFlow(MainActivityUIState())
     val uiState: StateFlow<MainActivityUIState> get() = _uiState.asStateFlow()
 
@@ -106,6 +107,7 @@ object MainActivityViewModel : ViewModel() {
                     Request.Builder()                     //https://kimi.moonshot.cn/share/cqrphv3df0j2csjduprg 解释
                         .url(Secret.COMPILE_SERVER)       //被kt的包管理知识点坑了
                         .post(requestBody)                // 新知识:依靠连续方法的调用来执行一连续动作
+//                                                          这个是链式调用，每个函数执行完操作后都会返回当前对象的引用，js里也有这种api设计啊
                         .build()
                 ).execute()                               // 发送请求并等待响应
 

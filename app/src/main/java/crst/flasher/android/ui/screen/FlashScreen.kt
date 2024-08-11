@@ -1,4 +1,4 @@
-package crst.flasher.android.ui.screen
+package crst.flasher.android.ui.screen   // 标定包路径
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -18,10 +18,12 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
+// 一块物理屏幕的多个物理分区可以由多个Ui kt程序构成
+//
 fun FlashScreen(uiState: MainActivityUIState, viewModel: MainActivityViewModel) {
     val scope = rememberCoroutineScope()
 
-    Column(
+    Column(  // 划分物理屏幕区域
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
@@ -31,7 +33,7 @@ fun FlashScreen(uiState: MainActivityUIState, viewModel: MainActivityViewModel) 
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Button(onClick = {
-                scope.launch {
+                scope.launch {                                // 新知识:协程 https://kimi.moonshot.cn/share/cqrpti2lve9ofug6i93g
                     viewModel.uploadSourceCode(uiState.code)
                 }
             }) {

@@ -1,5 +1,5 @@
-package crst.flasher.android // 定义包结构
-
+package crst.flasher.android // 定义包结构,承担着管理项目文件的功能这样在调用方法时候可以避免
+                             // 像python那样即便在同一个目录下导入大量的模块
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -17,6 +17,9 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
+import java.util.concurrent.TimeUnit
+
 
 object MainActivityViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(MainActivityUIState())
@@ -70,10 +73,10 @@ object MainActivityViewModel : ViewModel() {
     }
 
     fun uploadSourceCode(sourceCode: String) {
-        viewModelScope.launch(Dispatchers.IO)
+        viewModelScope.launch(Dispatchers.IO)   // 此函数是放在协程中运行的
         {
             // 将该字符变量转化成请求体对象
-            Log.d("View接收到的数据", sourceCode)
+            Log.d("从View接收到的数据", sourceCode)
             // 定义一个json数据类
 
             // 完成字符串到json的转换，json结构如下
@@ -83,35 +86,56 @@ object MainActivityViewModel : ViewModel() {
             //    "filetype":.c文件还是.h文件说明
             //}
 
-            val sourceCodeRequest = Json.encodeToString(
+            val sourceCodeRequest = Json.encodeToString(  // 传入SourceCodeRequestJSON类对象
                 SourceCodeRequestJSON(
-                    name = "test.c",
+                    name = "test",        // 名字只取前半部分
                     code = sourceCode,
-                    filetype = ".c"
+                    filetype = "c"        // 类型名字不要加点
                 )
             )
-            val requestBody = sourceCodeRequest
-                .toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
-            // 发送JSON字符串
-            OkHttpClient().newBuilder().hostnameVerifier { _, _ -> true }.build().newCall(
-                Request.Builder()
-                    .url(Secret.COMPILE_SERVER)
-                    .post(requestBody)
+            val requestBody = sourceCodeRequest.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
+            // 发送JSON字符串，这个连续方法有返回结果你也可以单独执行不用一个变量接收返回结果
+            val response: Response = OkHttpClient().newBuilder().hostnameVerifier { _, _ -> true }.build().newCall(
+                Request.Builder()                     //https://kimi.moonshot.cn/share/cqrphv3df0j2csjduprg 解释
+                    .url(Secret.COMPILE_SERVER)       //被kt的包管理知识点坑了
+                    .post(requestBody)                // 新知识:依靠连续方法的调用来执行一连续动作
                     .build()
-            ).execute()
+            ).execute()                               // 发送请求并等待响应
+
+            if (response.isSuccessful) {
+                Log.d("上传成功", response.body?.string().toString())
+            } else {
+                Log.d("上传失败", response.body?.string().toString())
+            }
+
+
+
         }
     }
 
     fun downloadSourceCode() {
         viewModelScope.launch(Dispatchers.IO) {
-            val response = OkHttpClient().newCall(
+            val client = OkHttpClient().newBuilder()
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .build()
+
+            val response = client.newCall(
                 Request.Builder()
-                    .url("") // TODO: 补全url
+                    .url(Secret.COMPILE_SERVER)
                     .get()
                     .build()
             ).execute()
-            if (response.isSuccessful) {
+
+            if (response.isSuccessful)
+            {
+                Log.d("下载提示", "下载成功")
+                Log.d("返回信息",response.body?.string().toString())
                 setCode(response.body?.string().toString())
+
+            }else{
+                Log.e("下载提示", "下载失败")
+                Log.e("返回信息",response.body?.string().toString())
             }
         }
     }

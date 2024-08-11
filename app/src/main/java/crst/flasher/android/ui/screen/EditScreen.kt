@@ -41,7 +41,9 @@ fun EditScreen(
         contentAlignment = Alignment.Center
     ) {
         if (uiState.files.isEmpty()) {
-            Column {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 Text(text = "没有打开的文件")
                 Button(onClick = {
                     Toast.makeText(

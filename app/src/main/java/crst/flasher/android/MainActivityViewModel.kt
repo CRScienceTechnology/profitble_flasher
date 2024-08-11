@@ -1,5 +1,5 @@
 package crst.flasher.android // 定义包结构,承担着管理项目文件的功能这样在调用方法时候可以避免
-                             // 像python那样即便在同一个目录下导入大量的模块
+// 像python那样即便在同一个目录下导入大量的模块
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -62,6 +62,11 @@ object MainActivityViewModel : ViewModel() {
     fun removeFile(fileUri: Uri) {
         updateUIState { copy(files = files.apply { remove(fileUri) }) }
         updateUIState { copy(selectedFileIndex = files.lastIndex) }
+        updateUIState {
+            if (selectedFileIndex in 0..files.lastIndex) copy(
+                code = files[selectedFileIndex].readText() ?: "// Source code here"
+            ) else copy()
+        }
     }
 
     fun removeAllFiles() {
@@ -93,21 +98,22 @@ object MainActivityViewModel : ViewModel() {
                     filetype = "c"        // 类型名字不要加点
                 )
             )
-            val requestBody = sourceCodeRequest.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
+            val requestBody =
+                sourceCodeRequest.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
             // 发送JSON字符串，这个连续方法有返回结果你也可以单独执行不用一个变量接收返回结果
-            val response: Response = OkHttpClient().newBuilder().hostnameVerifier { _, _ -> true }.build().newCall(
-                Request.Builder()                     //https://kimi.moonshot.cn/share/cqrphv3df0j2csjduprg 解释
-                    .url(Secret.COMPILE_SERVER)       //被kt的包管理知识点坑了
-                    .post(requestBody)                // 新知识:依靠连续方法的调用来执行一连续动作
-                    .build()
-            ).execute()                               // 发送请求并等待响应
+            val response: Response =
+                OkHttpClient().newBuilder().hostnameVerifier { _, _ -> true }.build().newCall(
+                    Request.Builder()                     //https://kimi.moonshot.cn/share/cqrphv3df0j2csjduprg 解释
+                        .url(Secret.COMPILE_SERVER)       //被kt的包管理知识点坑了
+                        .post(requestBody)                // 新知识:依靠连续方法的调用来执行一连续动作
+                        .build()
+                ).execute()                               // 发送请求并等待响应
 
             if (response.isSuccessful) {
                 Log.d("上传成功", response.body?.string().toString())
             } else {
                 Log.d("上传失败", response.body?.string().toString())
             }
-
 
 
         }
@@ -127,15 +133,14 @@ object MainActivityViewModel : ViewModel() {
                     .build()
             ).execute()
 
-            if (response.isSuccessful)
-            {
+            if (response.isSuccessful) {
                 Log.d("下载提示", "下载成功")
-                Log.d("返回信息",response.body?.string().toString())
+                Log.d("返回信息", response.body?.string().toString())
                 setCode(response.body?.string().toString())
 
-            }else{
+            } else {
                 Log.e("下载提示", "下载失败")
-                Log.e("返回信息",response.body?.string().toString())
+                Log.e("返回信息", response.body?.string().toString())
             }
         }
     }

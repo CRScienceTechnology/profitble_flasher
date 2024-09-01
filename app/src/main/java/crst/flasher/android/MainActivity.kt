@@ -1,6 +1,7 @@
 package crst.flasher.android
 
-import android.content.Context.USB_SERVICE
+import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.hardware.usb.UsbManager
 import android.os.Bundle
@@ -10,7 +11,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,14 +22,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -223,8 +227,62 @@ class MainActivity : ComponentActivity() {
                                                         viewModel = viewModel
                                                     )
                                                 },
-                                                onClick = { }
+                                                onClick = { viewModel.setExpandPortSelectList(!uiState.expandPortSelectList) }
                                             )
+                                            AnimatedVisibility(visible = uiState.expandPortSelectList) {
+                                                val usbManager =
+                                                    mainActivity.getSystemService(Context.USB_SERVICE) as UsbManager
+                                                val usbSerialDriverList =
+                                                    UsbSerialProber.getDefaultProber()
+                                                        .findAllDrivers(usbManager)
+                                                Column {
+                                                    usbSerialDriverList.forEach {
+                                                        DropdownMenuItem(
+                                                            text = {
+                                                                Column {
+                                                                    Text(text = it.device.deviceName)
+                                                                    Text(
+                                                                        text = "Product Name: " + it.device.productName,
+                                                                        style = MaterialTheme.typography.bodySmall
+                                                                    )
+                                                                    Text(
+                                                                        text = "Manufacturer Name: " + it.device.manufacturerName,
+                                                                        style = MaterialTheme.typography.bodySmall
+                                                                    )
+                                                                    Text(
+                                                                        text = "Device ID: " + it.device.deviceId,
+                                                                        style = MaterialTheme.typography.bodySmall
+                                                                    )
+                                                                    Text(
+                                                                        text = "Product ID: " + it.device.productId,
+                                                                        style = MaterialTheme.typography.bodySmall
+                                                                    )
+                                                                    Text(
+                                                                        text = "Vendor ID: " + it.device.vendorId,
+                                                                        style = MaterialTheme.typography.bodySmall
+                                                                    )
+                                                                    Text(
+                                                                        text = "Version: " + it.device.version,
+                                                                        style = MaterialTheme.typography.bodySmall
+                                                                    )
+                                                                }
+                                                            },
+                                                            onClick = {
+                                                                usbManager.requestPermission(
+                                                                    it.device,
+                                                                    PendingIntent.getBroadcast(
+                                                                        mainActivity,
+                                                                        0,
+                                                                        Intent(),
+                                                                        PendingIntent.FLAG_IMMUTABLE
+                                                                    )
+                                                                )
+                                                                viewModel.selectDevice(it)
+                                                            }
+                                                        )
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -235,7 +293,6 @@ class MainActivity : ComponentActivity() {
                     // 整体底部导航栏布局，没有when方法因为两个界面的底部UI一致,因此不需要判断点击发生是当前所处的页面
                     bottomBar = {
                         NavigationBar { // 导航栏父元素，因为底部元素就一套，所以分析所处的UI布局意义不大
-
                             NavigationBarItem(
                                 selected = uiState.currentScreen == Screen.Edit,
                                 onClick = {                                   // 实现页面跳转更新
@@ -290,48 +347,21 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun PortSelectRow(uiState: MainActivityUIState, viewModel: MainActivityViewModel) {
-    val usbManager =
-        BaseApplication.context.getSystemService(USB_SERVICE) as UsbManager
     // 定义了一行布局，包含两个子元素
     Row(
         modifier = Modifier.fillMaxWidth(),                // 表示这个 Row 的宽度将填充其父容器的整个宽度
         horizontalArrangement = Arrangement.SpaceBetween,  // 设置了子元素在水平方向上的分布方式为两端对齐
         verticalAlignment = Alignment.CenterVertically     //确保子元素垂直居中。
     ) {
-        Text(text = uiState.selectedDevice)                                       // text组件
-        IconButton(onClick = { viewModel.setExpandPortSelectDropdownMenu(true) }) // IconButton组件，点击触发事件
+        Text(
+            text = uiState.selectedDevice?.device?.deviceName ?: "未选中端口"
+        )                                       // text组件
+        IconButton(onClick = { viewModel.setExpandPortSelectList(!uiState.expandPortSelectList) }) // IconButton组件，点击触发事件
         {
             Icon(
-                imageVector = Icons.Default.KeyboardArrowDown,                    // ICON图标设置
+                imageVector = if (uiState.expandPortSelectList) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,                    // ICON图标设置
                 contentDescription = null                                         // 无障碍描述
             )
-            DropdownMenu(
-                expanded = uiState.expandPortSelectDropdownMenu,                       // 是否展开下拉菜单，取决于uiState
-                onDismissRequest = { viewModel.setExpandPortSelectDropdownMenu(false) } // 点击下拉菜单意外的地方触发回调
-            ) {                                                                        // 组件子内容
-                val availableDrivers =
-                    UsbSerialProber.getDefaultProber()              // 获取所有可用USB驱动器
-                        .findAllDrivers(usbManager)
-
-                Text(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    text = "选择端口"
-                )
-                availableDrivers.forEach { driver ->
-                    HorizontalDivider()
-                    DropdownMenuItem(
-                        text = { Text(text = driver.ports.toString()) },
-                        onClick = {
-                            // 请求选中的usb设备的权限
-                            /*usbManager.requestPermission(
-                                it.value,
-                                PendingIntent.getBroadcast( mainActivity, 0,  Intent(), PendingIntent.FLAG_IMMUTABLE  )
-                            )*/
-                            viewModel.selectDevice(driver.ports.toString())
-                        }
-                    )
-                }
-            }
         }
     }
 }

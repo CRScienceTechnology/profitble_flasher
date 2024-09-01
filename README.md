@@ -39,3 +39,7 @@
 - http://www.51hei.com/bbs/forum.php?mod=viewthread&tid=190291&extra=page%3D1&page=1&  
 
 - https://github.com/WallBreakerX/MCUFirmwareWriter
+
+使用的开源库
+--
+- [usb-serial-for-android](https://github.com/mik3y/usb-serial-for-android)

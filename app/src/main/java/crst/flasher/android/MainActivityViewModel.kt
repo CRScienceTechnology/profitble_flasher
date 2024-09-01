@@ -1,9 +1,17 @@
 package crst.flasher.android // 定义包结构,承担着管理项目文件的功能这样在调用方法时候可以避免
 // 像python那样即便在同一个目录下导入大量的模块
+import android.content.Context
+import android.content.Intent
+import android.hardware.usb.UsbManager
 import android.net.Uri
+import android.os.Environment
 import android.util.Log
+import android.widget.Toast
+import androidx.activity.result.ActivityResultLauncher
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.hoho.android.usbserial.driver.UsbSerialDriver
+import com.hoho.android.usbserial.driver.UsbSerialPort
 import crst.flasher.android.data.model.SourceCodeRequestJSON
 import crst.flasher.android.util.readText
 import kotlinx.coroutines.Dispatchers
@@ -18,11 +26,13 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+import java.io.File
+import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 
 object MainActivityViewModel : ViewModel() {
-//    ViewModel是mvvm架构中重要的一层，用于存储和修改ui相关的状态，有助于ui与逻辑分离
+    //    ViewModel是mvvm架构中重要的一层，用于存储和修改ui相关的状态，有助于ui与逻辑分离
     private val _uiState = MutableStateFlow(MainActivityUIState())
     val uiState: StateFlow<MainActivityUIState> get() = _uiState.asStateFlow()
 
@@ -34,12 +44,12 @@ object MainActivityViewModel : ViewModel() {
         updateUIState { copy(code = code) }
     }
 
-    fun selectDevice(device: String) {
+    fun selectDevice(device: UsbSerialDriver?) {
         updateUIState { copy(selectedDevice = device) }
     }
 
-    fun setExpandPortSelectDropdownMenu(expand: Boolean) {
-        updateUIState { copy(expandPortSelectDropdownMenu = expand) }
+    fun setExpandPortSelectList(expand: Boolean) {
+        updateUIState { copy(expandPortSelectList = expand) }
     }
 
     fun setBaudRate(baudRate: String) {
@@ -121,7 +131,11 @@ object MainActivityViewModel : ViewModel() {
         }
     }
 
-    fun downloadSourceCode() {
+    /**
+     * 尝试从服务器下载hex文件并保存到本地Download文件夹中
+     */
+    fun downloadHexFile() {
+        Toast.makeText(BaseApplication.context, "开始下载", Toast.LENGTH_SHORT).show()
         viewModelScope.launch(Dispatchers.IO) {
             val client = OkHttpClient().newBuilder()
                 .connectTimeout(30, TimeUnit.SECONDS)
@@ -136,27 +150,128 @@ object MainActivityViewModel : ViewModel() {
             ).execute()
 
             if (response.isSuccessful) {
+                launch(Dispatchers.Main) {
+                    Toast.makeText(BaseApplication.context, "下载成功", Toast.LENGTH_SHORT).show()
+                }
                 Log.d("下载提示", "下载成功")
                 Log.d("返回信息", response.body?.string().toString())
-                setCode(response.body?.string().toString())
-
+                response.body?.byteStream().use { inputStream ->
+                    val downloadsDir =
+                        BaseApplication.context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+                            ?: return@use
+                    val file = File(downloadsDir, System.currentTimeMillis().toString() + ".hex")
+                    try {
+                        inputStream?.let {
+                            file.outputStream().use { outputStream ->
+                                inputStream.copyTo(outputStream)
+                            }
+                        }
+                        launch(Dispatchers.Main) {
+                            Toast.makeText(
+                                BaseApplication.context,
+                                "保存成功",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    } catch (e: IOException) {
+                        e.printStackTrace()
+                        launch(Dispatchers.Main) {
+                            Toast.makeText(
+                                BaseApplication.context,
+                                "保存失败",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                }
             } else {
+                val errorMessage = response.body?.string().toString()
+                launch(Dispatchers.Main) {
+                    Toast.makeText(
+                        BaseApplication.context,
+                        "下载失败：${errorMessage}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
                 Log.e("下载提示", "下载失败")
-                Log.e("返回信息", response.body?.string().toString())
+                Log.e("返回信息", errorMessage)
             }
         }
     }
 
-    fun flash() {
-        // TODO
+    /**
+     * 启动烧录流程，此函数会尝试打开用户选中的usb串口设备，成功打开后使用参数中的launcher启动文件选择器让用户选择要烧录的hex文件
+     */
+    fun startFlash(launcher: ActivityResultLauncher<Intent>) {
+        if (uiState.value.selectedDevice == null) {
+            Toast.makeText(BaseApplication.context, "请选择设备", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (uiState.value.baudRate.isEmpty()) {
+            Toast.makeText(BaseApplication.context, "请配置波特率", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val usbManager = BaseApplication.context.getSystemService(Context.USB_SERVICE) as UsbManager
+        val serialDriver = uiState.value.selectedDevice!!
+        val port = serialDriver.ports[0]
+        try {
+            port.open(usbManager.openDevice(serialDriver.device))
+            port.setParameters(
+                uiState.value.baudRate.toInt(),
+                UsbSerialPort.DATABITS_8,
+                UsbSerialPort.STOPBITS_1,
+                UsbSerialPort.PARITY_NONE
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(
+                BaseApplication.context,
+                "打开串口失败，请尝试重新选择设备或配置波特率",
+                Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+        Toast.makeText(
+            BaseApplication.context,
+            "打开串口成功。请选择hex文件进行烧录",
+            Toast.LENGTH_SHORT
+        ).show()
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            type = "*/*"
+        }
+        launcher.launch(intent)
+    }
+
+    /**
+     * 执行烧录流程，此函数会将hex文件内容发送给串口设备进行烧录
+     */
+    fun executeFlash(hexFileUri: Uri) {
+        if (uiState.value.selectedDevice == null) {
+            Toast.makeText(BaseApplication.context, "请选择设备", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (uiState.value.baudRate.isEmpty()) {
+            Toast.makeText(BaseApplication.context, "请配置波特率", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val serialDriver = uiState.value.selectedDevice!!
+        val port = serialDriver.ports[0]
+        try {
+            port.write(hexFileUri.readText().toString().toByteArray(), 8000)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(BaseApplication.context, "烧录失败", Toast.LENGTH_SHORT).show()
+            return
+        }
+        Toast.makeText(BaseApplication.context, "烧录成功", Toast.LENGTH_SHORT).show()
     }
 }
 
 data class MainActivityUIState(
-    val selectedDevice: String = "未选中端口",
-    val expandPortSelectDropdownMenu: Boolean = false,
+    val selectedDevice: UsbSerialDriver? = null,
+    val expandPortSelectList: Boolean = false,
     val code: String = "// Source code here",
-    val baudRate: String = "",
+    val baudRate: String = "9600",
     val expandOptionMenu: Boolean = false,
     val currentScreen: MainActivity.Screen = MainActivity.Screen.Flash,
     val files: MutableList<Uri> = mutableListOf(),

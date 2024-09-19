@@ -43,3 +43,6 @@
 使用的开源库
 --
 - [usb-serial-for-android](https://github.com/mik3y/usb-serial-for-android)
+- [okhttp](https://github.com/square/okhttp)
+- [kotlinx.serialization](https://github.com/Kotlin/kotlinx.serialization)
+- [Jetpack](https://developer.android.com/jetpack)

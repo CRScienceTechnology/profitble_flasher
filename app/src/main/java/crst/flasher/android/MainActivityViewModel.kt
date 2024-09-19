@@ -12,6 +12,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hoho.android.usbserial.driver.UsbSerialDriver
 import com.hoho.android.usbserial.driver.UsbSerialPort
+import crst.flasher.android.data.Constant
 import crst.flasher.android.data.model.SourceCodeRequestJSON
 import crst.flasher.android.util.readText
 import kotlinx.coroutines.Dispatchers
@@ -89,6 +90,14 @@ object MainActivityViewModel : ViewModel() {
     }
 
     fun uploadSourceCode(sourceCode: String) {
+        val remoteServerUrl = BaseApplication.globalSharedPreference()
+            .getString(Constant.SP_KEY_REMOTE_SERVER_URL, "").toString()
+        if (remoteServerUrl.isEmpty()) {
+            Toast.makeText(BaseApplication.context, "请先配置远程服务器地址", Toast.LENGTH_SHORT)
+                .show()
+            return
+        }
+
         viewModelScope.launch(Dispatchers.IO)   // 此函数是放在协程中运行的
         {
             // 将该字符变量转化成请求体对象
@@ -102,32 +111,43 @@ object MainActivityViewModel : ViewModel() {
             //    "filetype":.c文件还是.h文件说明
             //}
 
-            val sourceCodeRequest = Json.encodeToString(  // 传入SourceCodeRequestJSON类对象
-                SourceCodeRequestJSON(
-                    name = "test",        // 名字只取前半部分
-                    code = sourceCode,
-                    filetype = "c"        // 类型名字不要加点
+            try {
+                val sourceCodeRequest = Json.encodeToString(  // 传入SourceCodeRequestJSON类对象
+                    SourceCodeRequestJSON(
+                        name = "test",        // 名字只取前半部分
+                        code = sourceCode,
+                        filetype = "c"        // 类型名字不要加点
+                    )
                 )
-            )
-            val requestBody =
-                sourceCodeRequest.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
-            // 发送JSON字符串，这个连续方法有返回结果你也可以单独执行不用一个变量接收返回结果
-            val response: Response =
-                OkHttpClient().newBuilder().hostnameVerifier { _, _ -> true }.build().newCall(
-                    Request.Builder()                     //https://kimi.moonshot.cn/share/cqrphv3df0j2csjduprg 解释
-                        .url(Secret.COMPILE_SERVER)       //被kt的包管理知识点坑了
-                        .post(requestBody)                // 新知识:依靠连续方法的调用来执行一连续动作
+                val requestBody =
+                    sourceCodeRequest.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
+                // 发送JSON字符串，这个连续方法有返回结果你也可以单独执行不用一个变量接收返回结果
+                val response: Response =
+                    OkHttpClient().newBuilder().hostnameVerifier { _, _ -> true }.build().newCall(
+                        Request.Builder()                     //https://kimi.moonshot.cn/share/cqrphv3df0j2csjduprg 解释
+                            .url(remoteServerUrl)       //被kt的包管理知识点坑了
+                            .post(requestBody)                // 新知识:依靠连续方法的调用来执行一连续动作
 //                                                          这个是链式调用，每个函数执行完操作后都会返回当前对象的引用，js里也有这种api设计啊
-                        .build()
-                ).execute()                               // 发送请求并等待响应
+                            .build()
+                    ).execute()                               // 发送请求并等待响应
 
-            if (response.isSuccessful) {
-                Log.d("上传成功", response.body?.string().toString())
-            } else {
-                Log.d("上传失败", response.body?.string().toString())
+                launch(Dispatchers.Main) {
+                    if (response.isSuccessful) {
+                        Log.d("上传成功", response.body?.string().toString())
+                        Toast.makeText(BaseApplication.context, "上传成功", Toast.LENGTH_SHORT)
+                            .show()
+                    } else {
+                        Log.d("上传失败", response.body?.string().toString())
+                        Toast.makeText(BaseApplication.context, "上传失败", Toast.LENGTH_SHORT)
+                            .show()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("上传异常", e.message.toString())
+                viewModelScope.launch(Dispatchers.Main) {
+                    Toast.makeText(BaseApplication.context, "上传异常", Toast.LENGTH_SHORT).show()
+                }
             }
-
-
         }
     }
 
@@ -135,66 +155,83 @@ object MainActivityViewModel : ViewModel() {
      * 尝试从服务器下载hex文件并保存到本地Download文件夹中
      */
     fun downloadHexFile() {
+        val remoteServerUrl = BaseApplication.globalSharedPreference()
+            .getString(Constant.SP_KEY_REMOTE_SERVER_URL, "").toString()
+        if (remoteServerUrl.isEmpty()) {
+            Toast.makeText(BaseApplication.context, "请先配置远程服务器地址", Toast.LENGTH_SHORT)
+                .show()
+            return
+        }
+
         Toast.makeText(BaseApplication.context, "开始下载", Toast.LENGTH_SHORT).show()
         viewModelScope.launch(Dispatchers.IO) {
-            val client = OkHttpClient().newBuilder()
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
-                .build()
-
-            val response = client.newCall(
-                Request.Builder()
-                    .url(Secret.COMPILE_SERVER)
-                    .get()
+            try {
+                val client = OkHttpClient().newBuilder()
+                    .connectTimeout(30, TimeUnit.SECONDS)
+                    .readTimeout(30, TimeUnit.SECONDS)
                     .build()
-            ).execute()
 
-            if (response.isSuccessful) {
-                launch(Dispatchers.Main) {
-                    Toast.makeText(BaseApplication.context, "下载成功", Toast.LENGTH_SHORT).show()
-                }
-                Log.d("下载提示", "下载成功")
-                Log.d("返回信息", response.body?.string().toString())
-                response.body?.byteStream().use { inputStream ->
-                    val downloadsDir =
-                        BaseApplication.context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
-                            ?: return@use
-                    val file = File(downloadsDir, System.currentTimeMillis().toString() + ".hex")
-                    try {
-                        inputStream?.let {
-                            file.outputStream().use { outputStream ->
-                                inputStream.copyTo(outputStream)
+                val response = client.newCall(
+                    Request.Builder()
+                        .url(remoteServerUrl)
+                        .get()
+                        .build()
+                ).execute()
+
+                if (response.isSuccessful) {
+                    launch(Dispatchers.Main) {
+                        Toast.makeText(BaseApplication.context, "下载成功", Toast.LENGTH_SHORT)
+                            .show()
+                    }
+                    Log.d("下载提示", "下载成功")
+                    Log.d("返回信息", response.body?.string().toString())
+                    response.body?.byteStream().use { inputStream ->
+                        val downloadsDir =
+                            BaseApplication.context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+                                ?: return@use
+                        val file =
+                            File(downloadsDir, System.currentTimeMillis().toString() + ".hex")
+                        try {
+                            inputStream?.let {
+                                file.outputStream().use { outputStream ->
+                                    inputStream.copyTo(outputStream)
+                                }
+                            }
+                            launch(Dispatchers.Main) {
+                                Toast.makeText(
+                                    BaseApplication.context,
+                                    "保存成功",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        } catch (e: IOException) {
+                            e.printStackTrace()
+                            launch(Dispatchers.Main) {
+                                Toast.makeText(
+                                    BaseApplication.context,
+                                    "保存失败",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
                         }
-                        launch(Dispatchers.Main) {
-                            Toast.makeText(
-                                BaseApplication.context,
-                                "保存成功",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    } catch (e: IOException) {
-                        e.printStackTrace()
-                        launch(Dispatchers.Main) {
-                            Toast.makeText(
-                                BaseApplication.context,
-                                "保存失败",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
                     }
+                } else {
+                    val errorMessage = response.body?.string().toString()
+                    launch(Dispatchers.Main) {
+                        Toast.makeText(
+                            BaseApplication.context,
+                            "下载失败：${errorMessage}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    Log.e("下载提示", "下载失败")
+                    Log.e("返回信息", errorMessage)
                 }
-            } else {
-                val errorMessage = response.body?.string().toString()
+            } catch (e: Exception) {
+                Log.e("下载异常", e.message.toString())
                 launch(Dispatchers.Main) {
-                    Toast.makeText(
-                        BaseApplication.context,
-                        "下载失败：${errorMessage}",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    Toast.makeText(BaseApplication.context, "下载异常", Toast.LENGTH_SHORT).show()
                 }
-                Log.e("下载提示", "下载失败")
-                Log.e("返回信息", errorMessage)
             }
         }
     }

@@ -1,7 +1,6 @@
 package crst.flasher.android
 
 import android.app.PendingIntent
-import android.content.Context
 import android.content.Intent
 import android.hardware.usb.UsbManager
 import android.os.Bundle
@@ -24,6 +23,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -51,8 +51,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.hoho.android.usbserial.driver.UsbSerialProber
+import crst.flasher.android.MainActivity.Screen.Edit
+import crst.flasher.android.MainActivity.Screen.Flash
+import crst.flasher.android.MainActivity.Screen.Settings
 import crst.flasher.android.ui.screen.EditScreen
 import crst.flasher.android.ui.screen.FlashScreen
+import crst.flasher.android.ui.screen.SettingsScreen
 import crst.flasher.android.ui.theme.FlasherTheme
 import crst.flasher.android.util.writeText
 
@@ -66,7 +70,8 @@ class MainActivity : ComponentActivity() {
     enum class Screen(val route: String) {
         //        此类声明了应用中的所有页面，以及导航到这些页面需要用到的路由字符串
         Edit("edit"),   //代码修改页面
-        Flash("flash")  //编译烧录页面
+        Flash("flash"),  //编译烧录页面
+        Settings("settings")  //设置页面
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -151,7 +156,7 @@ class MainActivity : ComponentActivity() {
                             actions = {                         // 因为顶部布局有两套所以被点击时得执行分析动作
 //            不同页面中的额外操作不同，所以此处判断当前页面以展示不同的操作按钮
                                 when (uiState.currentScreen) {  // 检测全局uiState.currentScreen 的值，若为Screen.edit
-                                    Screen.Edit -> {            // 则意味着当前页面为Edit页面
+                                    Edit -> {            // 则意味着当前页面为Edit页面
 //                    注：此处没有点击事件。Compose是声明式ui框架，在ui元素相关的状态发生改变时会自动进行重构（即@Composable可组合函数会被重新调用）
 //                    此处的预期是：任意位置发生页面导航切换页面时应当同时更新uiState.currentScreen的值，此处的顶栏组件会跟随状态变化而重构
 //                    顶栏会自行观察uiState中的状态变化来更新页面，而不是由点击事件主动更改页面（后者这种是命令式ui框架）
@@ -195,7 +200,7 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                     // 若点中的是screen.flash，则响应事件处理逻辑流转到screen.flash的顶部ui函数
-                                    Screen.Flash -> {
+                                    Flash -> {
                                         IconButton(onClick = {
                                             viewModel.setExpandOptionMenu(true) // 连接两个kt文件的关键
                                         }) {
@@ -231,7 +236,7 @@ class MainActivity : ComponentActivity() {
                                             )
                                             AnimatedVisibility(visible = uiState.expandPortSelectList) {
                                                 val usbManager =
-                                                    mainActivity.getSystemService(Context.USB_SERVICE) as UsbManager
+                                                    mainActivity.getSystemService(USB_SERVICE) as UsbManager
                                                 val usbSerialDriverList =
                                                     UsbSerialProber.getDefaultProber()
                                                         .findAllDrivers(usbManager)
@@ -285,6 +290,10 @@ class MainActivity : ComponentActivity() {
                                             }
                                         }
                                     }
+
+                                    Settings -> {
+                                        // 设置页面没有额外操作，留空
+                                    }
                                 }
                             }
                         )
@@ -294,13 +303,13 @@ class MainActivity : ComponentActivity() {
                     bottomBar = {
                         NavigationBar { // 导航栏父元素，因为底部元素就一套，所以分析所处的UI布局意义不大
                             NavigationBarItem(
-                                selected = uiState.currentScreen == Screen.Edit,
+                                selected = uiState.currentScreen == Edit,
                                 onClick = {                                   // 实现页面跳转更新
-                                    navController.navigate(Screen.Edit.route) {
+                                    navController.navigate(Edit.route) {
                                         launchSingleTop = true
-                                        popUpTo(Screen.Edit.route)
+                                        popUpTo(Edit.route)
                                     }
-                                    viewModel.setCurrentScreen(Screen.Edit)
+                                    viewModel.setCurrentScreen(Edit)
                                 },
                                 icon = {
                                     Icon(
@@ -311,13 +320,13 @@ class MainActivity : ComponentActivity() {
                                 label = { Text(text = "代码修改") }
                             )
                             NavigationBarItem(
-                                selected = uiState.currentScreen == Screen.Flash,
+                                selected = uiState.currentScreen == Flash,
                                 onClick = {
-                                    navController.navigate(Screen.Flash.route) {
+                                    navController.navigate(Flash.route) {
                                         launchSingleTop = true
-                                        popUpTo(Screen.Flash.route)
+                                        popUpTo(Flash.route)
                                     }
-                                    viewModel.setCurrentScreen(Screen.Flash)
+                                    viewModel.setCurrentScreen(Flash)
                                 },
                                 icon = {
                                     Icon(
@@ -327,16 +336,34 @@ class MainActivity : ComponentActivity() {
                                 },
                                 label = { Text(text = "编译烧录") }
                             )
+                            NavigationBarItem(
+                                selected = uiState.currentScreen == Settings,
+                                onClick = {
+                                    navController.navigate(Settings.route) {
+                                        launchSingleTop = true
+                                        popUpTo(Settings.route)
+                                    }
+                                    viewModel.setCurrentScreen(Settings)
+                                },
+                                icon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Settings,
+                                        contentDescription = null
+                                    )
+                                },
+                                label = { Text(text = "配置") }
+                            )
                         }
                     }
                 ) { innerPadding -> // innerPadding对象指定的间距会根据scaffold中对顶栏底栏等的配置，自动填充间距。在内部组件中应用innerPadding可以避免内部组件被顶栏底栏等遮挡
                     NavHost(    // NavHost是导航容器，用于管理导航图，展示要显示的页面
                         navController = navController,  // 此NavHost的导航控制器
-                        startDestination = Screen.Flash.route,  // NavHost的起始页面路由，此处配置为编译烧录页面
+                        startDestination = Flash.route,  // NavHost的起始页面路由，此处配置为编译烧录页面
                         modifier = Modifier.padding(innerPadding)   // 应用Scaffold提供的间距偏移量，避免内容被顶栏底栏遮挡
                     ) { // 在lambda表达式内构建导航图，定义NavHost所有可能的目的页面
-                        composable(Screen.Flash.route) { FlashScreen(uiState, viewModel) }
-                        composable(Screen.Edit.route) { EditScreen(uiState, viewModel, launcher) }
+                        composable(Flash.route) { FlashScreen(uiState, viewModel) }
+                        composable(Edit.route) { EditScreen(uiState, viewModel, launcher) }
+                        composable(Settings.route) { SettingsScreen() }
                     }
                 }
             }

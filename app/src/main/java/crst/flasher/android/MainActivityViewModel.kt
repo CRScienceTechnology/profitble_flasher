@@ -8,6 +8,7 @@ import android.os.Environment
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
+import androidx.core.content.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hoho.android.usbserial.driver.UsbSerialDriver
@@ -69,6 +70,13 @@ object MainActivityViewModel : ViewModel() {
         updateUIState { copy(files = files.apply { add(fileUri) }) }
         updateUIState { copy(selectedFileIndex = files.indexOf(fileUri)) }
         updateUIState { copy(code = fileUri.readText().toString()) }
+        BaseApplication.globalSharedPreference().edit {
+            putStringSet(
+                Constant.SP_KEY_OPENED_FILES,
+                uiState.value.files.map { it.toString() }.toSet()
+            )
+        }
+        saveOpenedFilesUri()
     }
 
     fun removeFile(fileUri: Uri) {
@@ -76,13 +84,31 @@ object MainActivityViewModel : ViewModel() {
         updateUIState { copy(selectedFileIndex = files.lastIndex) }
         updateUIState {
             if (selectedFileIndex in 0..files.lastIndex) copy(
-                code = files[selectedFileIndex].readText() ?: "// Source code here"
+                code = files[selectedFileIndex].readText() ?: ""
             ) else copy()
         }
+        saveOpenedFilesUri()
     }
 
     fun removeAllFiles() {
         updateUIState { copy(files = files.apply { clear() }) }
+        updateUIState { copy(selectedFileIndex = -1) }
+        saveOpenedFilesUri()
+    }
+
+    // 记录当前已打开的文件的uri到缓存文件中，用于下次启动app时重新加载
+    private fun saveOpenedFilesUri() {
+        val cacheOpenedFilesFile =
+            File(BaseApplication.context.externalCacheDir, "opened_files.txt")
+        if (uiState.value.files.isEmpty()) {
+            cacheOpenedFilesFile.delete()
+        } else {
+            val sb = StringBuilder()
+            uiState.value.files.forEach { file ->
+                sb.appendLine(file.toString())
+            }
+            cacheOpenedFilesFile.writeText(sb.toString())
+        }
     }
 
     fun setSelectedFileIndex(index: Int) {
@@ -307,7 +333,7 @@ object MainActivityViewModel : ViewModel() {
 data class MainActivityUIState(
     val selectedDevice: UsbSerialDriver? = null,
     val expandPortSelectList: Boolean = false,
-    val code: String = "// Source code here",
+    val code: String = "",
     val baudRate: String = "9600",
     val expandOptionMenu: Boolean = false,
     val currentScreen: MainActivity.Screen = MainActivity.Screen.Flash,

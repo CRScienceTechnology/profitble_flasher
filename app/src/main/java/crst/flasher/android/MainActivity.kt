@@ -46,6 +46,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.edit
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -58,6 +59,7 @@ import crst.flasher.android.ui.screen.EditScreen
 import crst.flasher.android.ui.screen.FlashScreen
 import crst.flasher.android.ui.screen.SettingsScreen
 import crst.flasher.android.ui.theme.FlasherTheme
+import crst.flasher.android.util.getFileName
 import crst.flasher.android.util.writeText
 
 
@@ -97,6 +99,13 @@ class MainActivity : ComponentActivity() {
 //                        对此intent对象再次访问data属性得到的是一个Uri对象，在此处这个Uri表示系统saf返回的选中文档的uri。因为使用的是saf，所以不能使用绝对路径读写文件，而必须使用Uri
                         result.data?.data?.let { uri ->   // 代码作用 https://kimi.moonshot.cn/share/cqnpnucubms1eeb0k8h0
                             viewModel.addFile(uri)
+                            contentResolver.takePersistableUriPermission(
+                                uri,
+                                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                            )
+                            BaseApplication.globalSharedPreference().edit {
+                                putString(uri.getFileName(), uri.toString())
+                            }
                             /*
                                                 val contentResolver =
                                                     mainActivity.contentResolver  // 获取内容解析器, 用于读取文件 原因 https://kimi.moonshot.cn/share/cqnq2g69e5jhdcr4hui0
@@ -216,7 +225,10 @@ class MainActivity : ComponentActivity() {
                                                 viewModel.setExpandOptionMenu(false)
                                             }
                                         ) {
-                                            Text(text = "配置", modifier = Modifier.padding(8.dp))
+                                            Text(
+                                                text = "配置",
+                                                modifier = Modifier.padding(8.dp)
+                                            )
                                             TextField(
                                                 value = uiState.baudRate,
                                                 onValueChange = { viewModel.setBaudRate(it) },
